@@ -31,4 +31,22 @@ public class RequisicoesAutenticacao {
         @NotBlank(message = "Informe sua senha.")
         public String senha;
     }
+    public static class RequisicaoAtualizarPerfil {
+        @NotBlank(message = "Informe seu nome.")
+        public String nome;
+
+        @Email(message = "Informe um email valido.")
+        @NotBlank(message = "Informe seu email.")
+        @Pattern(regexp = EMAIL_PATTERN, message = "Informe um email valido.")
+        public String email;
+    }
+
+    public static class RequisicaoAlterarSenha {
+        @NotBlank(message = "Informe sua senha atual.")
+        public String senhaAtual;
+
+        @NotBlank(message = "Informe a nova senha.")
+        @Size(min = 6, message = "A nova senha deve ter no minimo 6 caracteres.")
+        public String novaSenha;
+    }
 }

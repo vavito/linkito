@@ -11,6 +11,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -70,6 +71,40 @@ public class AutenticacaoController {
                         usuario.getEmail(),
                         usuario.getPerfil())))
                 .orElseGet(() -> ResponseEntity.status(401).build());
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<?> atualizarPerfil(@Valid @RequestBody RequisicoesAutenticacao.RequisicaoAtualizarPerfil requisicao) {
+        UUID usuarioId = buscarUsuarioAtualId();
+        var usuarioComEmail = usuarioService.buscarPorEmail(requisicao.email);
+        if (usuarioComEmail.isPresent() && !usuarioComEmail.get().getId().equals(usuarioId)) {
+            return ResponseEntity.badRequest().body(new RespostaErro("Email ja esta em uso"));
+        }
+
+        return usuarioService.atualizarPerfil(usuarioId, requisicao.nome, requisicao.email)
+                .map(usuario -> ResponseEntity.ok(new RespostasAutenticacao.RespostaPerfil(
+                        usuario.getId(),
+                        usuario.getNome(),
+                        usuario.getEmail(),
+                        usuario.getPerfil())))
+                .orElseGet(() -> ResponseEntity.status(401).build());
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<?> alterarSenha(@Valid @RequestBody RequisicoesAutenticacao.RequisicaoAlterarSenha requisicao) {
+        UUID usuarioId = buscarUsuarioAtualId();
+        var usuarioOpt = usuarioService.buscarPorId(usuarioId);
+        if (usuarioOpt.isEmpty()) {
+            return ResponseEntity.status(401).build();
+        }
+
+        var usuario = usuarioOpt.get();
+        if (!codificadorSenha.matches(requisicao.senhaAtual, usuario.getSenhaHash())) {
+            return ResponseEntity.badRequest().body(new RespostaErro("Senha atual invalida"));
+        }
+
+        usuarioService.alterarSenha(usuario, requisicao.novaSenha);
+        return ResponseEntity.noContent().build();
     }
 
     private UUID buscarUsuarioAtualId() {
