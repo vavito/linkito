@@ -150,6 +150,7 @@ export default function Page() {
   const [view, setView] = useState<View>("home");
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [slowLoading, setSlowLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const autoRefreshingRef = useRef(false);
@@ -198,6 +199,16 @@ export default function Page() {
       setLoading(false);
     }
   }, [loadApp]);
+
+  useEffect(() => {
+    if (!loading) {
+      setSlowLoading(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setSlowLoading(true), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [loading]);
 
   const loadStats = useCallback(
     async (currentToken: string | null, linkId: string | null) => {
@@ -289,10 +300,17 @@ export default function Page() {
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="glass flex items-center gap-3 rounded-3xl px-5 py-4 text-sm font-black text-white"
+          className="glass grid max-w-sm gap-3 rounded-3xl px-5 py-4 text-center text-sm text-white"
         >
-          <Loader2 className="animate-spin text-[var(--acid)]" size={18} />
-          Carregando Linkito
+          <div className="flex items-center justify-center gap-3 font-black">
+            <Loader2 className="animate-spin text-[var(--acid)]" size={18} />
+            Carregando Linkito
+          </div>
+          {slowLoading ? (
+            <p className="text-xs font-bold leading-5 text-zinc-400">
+              O backend gratuito pode estar acordando. Isso costuma levar alguns segundos no primeiro acesso.
+            </p>
+          ) : null}
         </motion.div>
       </main>
     );
@@ -331,7 +349,7 @@ export default function Page() {
         onLogout={logout}
       />
 
-      <section className="mx-auto min-h-screen w-full max-w-7xl px-4 pb-10 pt-20 lg:pl-[292px] lg:pt-6">
+      <section className="mx-auto min-h-screen w-full max-w-7xl overflow-x-hidden px-4 pb-10 pt-20 lg:pl-[292px] lg:pt-6">
         <TopStrip user={user} view={view} onCreate={() => setView("create")} />
 
         <AnimatePresence mode="wait">
@@ -411,7 +429,18 @@ export default function Page() {
 function AuthScreen({ onAuthenticated }: { onAuthenticated: (token: string) => Promise<void> }) {
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
+  const [slowAuth, setSlowAuth] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!loading) {
+      setSlowAuth(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setSlowAuth(true), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [loading]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -554,6 +583,18 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (token: string) => P
               {loading ? <Loader2 className="animate-spin" size={18} /> : null}
               {mode === "login" ? "Entrar no painel" : "Criar e entrar"}
             </motion.button>
+            <AnimatePresence>
+              {slowAuth ? (
+                <motion.p
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center text-xs font-bold leading-5 text-zinc-400"
+                >
+                  O backend pode estar acordando no Render. Aguarde alguns segundos sem fechar a tela.
+                </motion.p>
+              ) : null}
+            </AnimatePresence>
           </form>
         </motion.div>
       </section>
@@ -781,7 +822,7 @@ function HomeView({
         </div>
       </motion.section>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard icon={Link2} label="Links" value={dashboard?.totalLinks ?? links.length} tone="acid" />
         <StatCard icon={MousePointerClick} label="Cliques" value={dashboard?.totalCliques ?? 0} tone="aqua" />
         <StatCard icon={Power} label="Ativos" value={activeLinks} tone="coral" />
@@ -1021,7 +1062,7 @@ function LinksView({
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.035 }}
-              className="rounded-3xl border border-white/10 bg-black/30 p-4 transition hover:border-white/20 hover:bg-white/[0.04]"
+              className="min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-black/30 p-4 transition hover:border-white/20 hover:bg-white/[0.04]"
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
@@ -1043,7 +1084,7 @@ function LinksView({
                   </p>
                   <p className="mt-1 truncate text-sm text-zinc-500">{link.urlOriginal}</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex min-w-0 flex-wrap gap-2">
                   <IconButton label="Copiar" icon={Copy} onClick={() => onCopy(link)} />
                   <IconButton label="Stats" icon={BarChart3} onClick={() => onStats(link)} />
                   <IconButton
@@ -1093,7 +1134,7 @@ function AnalyticsView({
   const maxClicks = Math.max(...links.map((link) => link.totalCliques), 1);
 
   return (
-    <section className="grid gap-4 xl:grid-cols-[360px_1fr]">
+    <section className="grid min-w-0 gap-4 xl:grid-cols-[360px_1fr]">
       <Panel title="Escolha um link" action="Analises">
         <div className="grid max-h-[540px] gap-2 overflow-y-auto pr-1 hide-scrollbar">
           {links.map((link) => (
@@ -1102,7 +1143,7 @@ function AnalyticsView({
               type="button"
               onClick={() => onSelect(link.id)}
               className={clsx(
-                "rounded-3xl border p-4 text-left transition",
+                "min-w-0 rounded-3xl border p-4 text-left transition",
                 selected?.id === link.id
                   ? "border-[var(--acid)] bg-[var(--acid)] text-black"
                   : "border-white/10 bg-black/30 text-white hover:border-white/20",
@@ -1118,16 +1159,16 @@ function AnalyticsView({
         </div>
       </Panel>
 
-      <div className="grid gap-4">
-        <section className="glass rounded-[2rem] p-5">
+      <div className="grid min-w-0 gap-4">
+        <section className="glass min-w-0 overflow-hidden rounded-[2rem] p-5">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--aqua)]">
             Link selecionado
           </p>
-          <h2 className="mt-3 text-4xl font-black tracking-[-0.06em] text-white">
+          <h2 className="mt-3 break-words text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl sm:tracking-[-0.06em]">
             {selected?.titulo || selected?.codigoCurto || "Sem dados"}
           </h2>
           <p className="mt-2 truncate text-sm text-zinc-500">{selected?.urlOriginal}</p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="mt-6 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3">
             <StatCard icon={MousePointerClick} label="Cliques salvos" value={stats?.totalCliques ?? selected?.totalCliques ?? 0} tone="acid" />
             <StatCard icon={Activity} label="Eventos" value={stats?.cliques.length ?? 0} tone="aqua" />
             <StatCard icon={Power} label="Status" value={selected?.ativo ? "Ativo" : "Pausado"} tone="coral" />
@@ -1375,7 +1416,7 @@ function DeleteLinkDialog({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.97 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="glass w-full max-w-md rounded-[2rem] p-5 shadow-[0_30px_120px_rgba(0,0,0,0.38)]"
+            className="glass w-full max-w-md overflow-hidden rounded-[2rem] p-5 shadow-[0_30px_120px_rgba(0,0,0,0.38)]"
           >
             <div className="mb-5 flex items-start gap-4">
               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-red-400/20 bg-red-400/10 text-red-100">
@@ -1531,7 +1572,7 @@ function Panel({
     <motion.section
       whileHover={{ y: -2 }}
       transition={{ duration: 0.2 }}
-      className="glass rounded-[2rem] p-4 sm:p-5"
+      className="glass min-w-0 overflow-hidden rounded-[2rem] p-4 sm:p-5"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-lg font-black tracking-[-0.03em] text-white">{title}</h2>
@@ -1627,7 +1668,7 @@ function StatCard({
   return (
     <motion.div
       whileHover={{ y: -4, scale: 1.01 }}
-      className="glass rounded-[2rem] p-4"
+      className="glass min-w-0 overflow-hidden rounded-[2rem] p-4"
     >
       <div className="flex items-center justify-between">
         <div className="grid h-11 w-11 place-items-center rounded-2xl bg-black/35 soft-ring">
@@ -1636,7 +1677,7 @@ function StatCard({
         <Check className="text-zinc-700" size={18} />
       </div>
       <p className="mt-5 text-sm font-bold text-zinc-500">{label}</p>
-      <p className="mt-1 text-4xl font-black tracking-[-0.06em] text-white">{value}</p>
+      <p className="mt-1 break-words text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl sm:tracking-[-0.06em]">{value}</p>
     </motion.div>
   );
 }
@@ -1645,7 +1686,7 @@ function LinkRow({ link, onCopy }: { link: ShortLink; onCopy: () => void }) {
   return (
     <motion.div
       whileHover={{ x: 4 }}
-      className="flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-black/30 p-3"
+      className="flex min-w-0 items-center justify-between gap-3 overflow-hidden rounded-3xl border border-white/10 bg-black/30 p-3"
     >
       <div className="min-w-0">
         <p className="truncate text-sm font-black text-white">{link.titulo || "Link sem titulo"}</p>
@@ -1681,14 +1722,14 @@ function IconButton({
       type="button"
       onClick={onClick}
       className={clsx(
-        "flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black transition",
+        "flex min-w-0 items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black transition",
         danger
           ? "border-red-400/20 bg-red-400/10 text-red-100 hover:bg-red-400/15"
           : "border-white/10 bg-white/[0.05] text-zinc-300 hover:bg-[var(--acid)] hover:text-black",
       )}
-    >
-      <Icon size={15} />
-      {label}
+      >
+      <Icon className="shrink-0" size={15} />
+      <span className="truncate">{label}</span>
     </motion.button>
   );
 }
